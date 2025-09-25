@@ -56,8 +56,8 @@ Cypress.Commands.add('checkUnauthorized', (method, url) => {
 
 Cypress.Commands.add('login', () => {
     const userData = {
-        name: 'John Doe',
-        email: 'john@nest.test',
+        name: 'Muhamad Akbar Fadilah',
+        email: 'akbarfadilah@nest.test',
         password: 'Secret_123',
     }
 

@@ -1,7 +1,7 @@
 describe('Auth module', () => {
   const userData = {
-    name: 'John Doe',
-    email: 'john@nest.test',
+    name: 'Muhamad Akbar Fadilah',
+    email: 'akbarfadilah@nest.test',
     password: 'Secret_123',
   }
 
@@ -76,8 +76,8 @@ describe('Auth module', () => {
         expect(response.status).to.eq(201)
         expect(response.body.success).to.be.true
         expect(id).not.to.be.undefined
-        expect(name).to.eq('John Doe')
-        expect(email).to.eq('john@nest.test')
+        expect(name).to.eq('Muhamad Akbar Fadilah')
+        expect(email).to.eq('akbarfadilah@nest.test')
         expect(password).to.be.undefined
       })
     })
