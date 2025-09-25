@@ -2,23 +2,6 @@ describe('Comment module', () => {
   const deletedId = Cypress._.random(1, 5)
   before('login', () => cy.login())
 
-  // Helper endpoints and request helpers
-  const ENDPOINTS = {
-    COMMENTS: '/comments',
-    POSTS: '/posts',
-  }
-
-  const authHeaders = () => ({ authorization: `Bearer ${Cypress.env('token')}` })
-
-  const post = (url, body, failOnStatus = true) =>
-    cy.request({ method: 'POST', url, body, headers: authHeaders(), failOnStatusCode: failOnStatus })
-
-  const get = (url, failOnStatus = true) =>
-    cy.request({ method: 'GET', url, headers: authHeaders(), failOnStatusCode: failOnStatus })
-
-  const del = (url, failOnStatus = true) =>
-    cy.request({ method: 'DELETE', url, headers: authHeaders(), failOnStatusCode: failOnStatus })
-
   describe('Create comment', () => {
     /**
      * 1. return unauthorized
@@ -29,14 +12,16 @@ describe('Comment module', () => {
      */
 
     it('should return unauthorized', () => {
-      cy.checkUnauthorized('POST', ENDPOINTS.COMMENTS)
+      cy.checkUnauthorized('POST', '/comments')
     })
 
     it('should return error validation messages', () => {
       cy.request({
         method: 'POST',
-        url: ENDPOINTS.COMMENTS,
-        headers: authHeaders(),
+        url: '/comments',
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
         failOnStatusCode: false,
       }).then((response) => {
         cy.badRequest(response, [
@@ -51,7 +36,14 @@ describe('Comment module', () => {
 
       cy.fixture('comments').then((commentsData) => {
         commentsData.forEach((_comment) => {
-          post(ENDPOINTS.COMMENTS, _comment).then((response) => {
+          cy.request({
+            method: 'POST',
+            url: '/comments',
+            headers: {
+              authorization: `Bearer ${Cypress.env('token')}`,
+            },
+            body: _comment,
+          }).then((response) => {
             const {
               success,
               data: { post_id, content },
@@ -68,7 +60,13 @@ describe('Comment module', () => {
 
     it('should be found in get post by id endpoint', () => {
       cy.fixture('comments').then((commentData) => {
-        get(`${ENDPOINTS.POSTS}/${commentData[0].post_id}`).then((response) => {
+        cy.request({
+          method: 'GET',
+          url: `/posts/${commentData[0].post_id}`,
+          headers: {
+            authorization: `Bearer ${Cypress.env('token')}`,
+          },
+        }).then((response) => {
           const { comments } = response.body.data
           const isFound = comments.some(
             (comment) => comment.content === commentData[0].content,
@@ -81,14 +79,19 @@ describe('Comment module', () => {
     })
 
     it('should be found in get all posts endpoint', () => {
-      get(ENDPOINTS.POSTS).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: '/posts',
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
+      }).then((response) => {
         cy.fixture('comments').then((commentData) => {
           const posts = response.body.data
           commentData.forEach((comment) => {
-            const post = posts.find((p) => p.id === comment.post_id)
-            // minimal safety: ensure post exists before checking comments
-            expect(post, `post with id ${comment.post_id} should exist`).to.be.ok
-            const isFound = post.comments.some((_comment) => _comment.content === comment.content)
+            const isFound = posts
+              .find((post) => post.id === comment.post_id)
+              .comments.some((_comment) => _comment.content === comment.content)
 
             expect(isFound).to.be.true
           })
@@ -106,17 +109,30 @@ describe('Comment module', () => {
      */
 
     it('should return unauthorized', () => {
-      cy.checkUnauthorized('DELETE', `${ENDPOINTS.COMMENTS}/5`)
+      cy.checkUnauthorized('DELETE', '/comments/5')
     })
 
     it('should return not found', () => {
-      del(`${ENDPOINTS.COMMENTS}/${Cypress._.random(6, 10)}`, false).then((response) => {
+      cy.request({
+        method: 'DELETE',
+        url: `/comments/${Cypress._.random(6, 10)}`,
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
+        failOnStatusCode: false,
+      }).then((response) => {
         expect(response.status).to.eq(404)
       })
     })
 
     it('should successfully delete comment', () => {
-      del(`${ENDPOINTS.COMMENTS}/${deletedId}`).then((response) => {
+      cy.request({
+        method: 'DELETE',
+        url: `/comments/${deletedId}`,
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
+      }).then((response) => {
         const { message, success } = response.body
 
         expect(response.status).to.eq(200)
@@ -129,7 +145,13 @@ describe('Comment module', () => {
       cy.fixture('comments').then((commentData) => {
         const deletedComment = commentData[deletedId - 1]
 
-        get(`${ENDPOINTS.POSTS}/${deletedComment.post_id}`).then((response) => {
+        cy.request({
+          method: 'GET',
+          url: `/posts/${deletedComment.post_id}`,
+          headers: {
+            authorization: `Bearer ${Cypress.env('token')}`,
+          },
+        }).then((response) => {
           const { comments } = response.body.data
           const isFound = comments.some(
             (comment) =>

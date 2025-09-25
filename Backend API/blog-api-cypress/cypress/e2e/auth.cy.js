@@ -1,27 +1,8 @@
 describe('Auth module', () => {
   const userData = {
-    name: 'Muhamad Akbar Fadilah',
-    email: 'akbarfadilah@nest.test',
+    name: 'John Doe',
+    email: 'john@nest.test',
     password: 'Secret_123',
-  }
-
-  // Helper endpoints and request helpers to reduce duplication
-  const ENDPOINTS = {
-    REGISTER: '/auth/register',
-    LOGIN: '/auth/login',
-    ME: '/auth/me',
-  }
-
-  const post = (url, body, failOnStatus = true) => {
-    const req = { method: 'POST', url, failOnStatusCode: failOnStatus }
-    if (body !== undefined) req.body = body
-    return cy.request(req)
-  }
-
-  const get = (url, token, failOnStatus = true) => {
-    const req = { method: 'GET', url, failOnStatusCode: failOnStatus }
-    if (token) req.headers = { authorization: `Bearer ${token}` }
-    return cy.request(req)
   }
 
   describe('Register', () => {
@@ -34,7 +15,18 @@ describe('Auth module', () => {
      */
 
     it('should return error messages for validation', () => {
-      post(ENDPOINTS.REGISTER, undefined, false).then((response) => {
+      cy.request({
+        method: 'POST',
+        url: '/auth/register',
+        failOnStatusCode: false,
+      }).then((response) => {
+        // expect(response.status).to.eq(400)
+        // expect(response.body.error).to.eq('Bad Request')
+        // expect('name should not be empty').to.be.oneOf(response.body.message)
+        // expect('email should not be empty').to.be.oneOf(response.body.message)
+        // expect('password should not be empty').to.be.oneOf(
+        //   response.body.message,
+        // )
         cy.badRequest(response, [
           'name should not be empty',
           'email should not be empty',
@@ -44,48 +36,59 @@ describe('Auth module', () => {
     })
 
     it('should return error message for invalid email format', () => {
-      post(
-        ENDPOINTS.REGISTER,
-        {
+      cy.request({
+        method: 'POST',
+        url: '/auth/register',
+        body: {
           name: userData.name,
-          email: 'akbarfadilah @ nest.test',
+          email: 'john @ nest.test',
           password: userData.password,
         },
-        false,
-      ).then((response) => {
+        failOnStatusCode: false,
+      }).then((response) => {
         cy.badRequest(response, ['email must be an email'])
       })
     })
 
     it('should return error message for invalid password format', () => {
-      post(
-        ENDPOINTS.REGISTER,
-        {
+      cy.request({
+        method: 'POST',
+        url: '/auth/register',
+        body: {
           name: userData.name,
           email: userData.email,
           password: 'invaidpassword',
         },
-        false,
-      ).then((response) => {
+        failOnStatusCode: false,
+      }).then((response) => {
         cy.badRequest(response, ['password is not strong enough'])
       })
     })
 
     it('should successfully registered', () => {
       cy.resetUsers()
-      post(ENDPOINTS.REGISTER, userData).then((response) => {
+      cy.request({
+        method: 'POST',
+        url: '/auth/register',
+        body: userData,
+      }).then((response) => {
         const { id, name, email, password } = response.body.data
         expect(response.status).to.eq(201)
         expect(response.body.success).to.be.true
         expect(id).not.to.be.undefined
-        expect(name).to.eq('Muhamad Akbar Fadilah')
-        expect(email).to.eq('akbarfadilah@nest.test')
+        expect(name).to.eq('John Doe')
+        expect(email).to.eq('john@nest.test')
         expect(password).to.be.undefined
       })
     })
 
     it('should return error because of duplicate email', () => {
-      post(ENDPOINTS.REGISTER, userData, false).then((response) => {
+      cy.request({
+        method: 'POST',
+        url: '/auth/register',
+        body: userData,
+        failOnStatusCode: false,
+      }).then((response) => {
         expect(response.status).to.eq(500)
         expect(response.body.success).to.be.false
         expect(response.body.message).to.eq('Email already exists')
@@ -100,26 +103,35 @@ describe('Auth module', () => {
      */
 
     it('should return unauthorized on failed', () => {
-      post(ENDPOINTS.LOGIN, undefined, false).then((response) => {
+      cy.request({
+        method: 'POST',
+        url: '/auth/login',
+        failOnStatusCode: false,
+      }).then((response) => {
         cy.unauthorized(response)
       })
 
-      post(
-        ENDPOINTS.LOGIN,
-        {
+      cy.request({
+        method: 'POST',
+        url: '/auth/login',
+        body: {
           email: userData.email,
           password: 'wrong password',
         },
-        false,
-      ).then((response) => {
+        failOnStatusCode: false,
+      }).then((response) => {
         cy.unauthorized(response)
       })
     })
 
     it('should return access token on success', () => {
-      post(ENDPOINTS.LOGIN, {
-        email: userData.email,
-        password: userData.password,
+      cy.request({
+        method: 'POST',
+        url: '/auth/login',
+        body: {
+          email: userData.email,
+          password: userData.password,
+        },
       }).then((response) => {
         expect(response.body.success).to.be.true
         expect(response.body.message).to.eq('Login success')
@@ -139,11 +151,18 @@ describe('Auth module', () => {
     })
 
     it('should return unauthorized when send no token', () => {
-      cy.checkUnauthorized('GET', ENDPOINTS.ME)
+      cy.checkUnauthorized('GET', '/auth/me')
     })
 
     it('should return correct current data', () => {
-      get(ENDPOINTS.ME, Cypress.env('token'), false).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: '/auth/me',
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
+        failOnStatusCode: false,
+      }).then((response) => {
         const { id, name, email, password } = response.body.data
         expect(response.status).to.eq(200)
         expect(response.body.success).to.be.true

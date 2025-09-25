@@ -8,28 +8,6 @@ describe('Post module', () => {
 
   before('generate posts data', () => cy.generatePostsData(dataCount))
 
-  // Helper endpoints and request helpers
-  const ENDPOINTS = {
-    POSTS: '/posts',
-  }
-
-  const authHeaders = () => ({ authorization: `Bearer ${Cypress.env('token')}` })
-
-  const requestWithAuth = ({ method, url, body, failOnStatus = true }) =>
-    cy.request({ method, url, headers: authHeaders(), body, failOnStatusCode: failOnStatus })
-
-  const post = (url, body, failOnStatus = true) =>
-    requestWithAuth({ method: 'POST', url, body, failOnStatus })
-
-  const get = (url, failOnStatus = true) =>
-    requestWithAuth({ method: 'GET', url, failOnStatus })
-
-  const patch = (url, body, failOnStatus = true) =>
-    requestWithAuth({ method: 'PATCH', url, body, failOnStatus })
-
-  const del = (url, failOnStatus = true) =>
-    requestWithAuth({ method: 'DELETE', url, failOnStatus })
-
   describe('Create post', () => {
     /**
      * 1. return unauthorized
@@ -38,13 +16,13 @@ describe('Post module', () => {
      */
 
     it('should return unauthorized', () => {
-      cy.checkUnauthorized('POST', ENDPOINTS.POSTS)
+      cy.checkUnauthorized('POST', '/posts')
     })
 
     it('should return error validation messages', () => {
       cy.request({
         method: 'POST',
-        url: ENDPOINTS.POSTS,
+        url: '/posts',
         headers: {
           authorization: `Bearer ${Cypress.env('token')}`,
         },
@@ -59,9 +37,16 @@ describe('Post module', () => {
 
     it('should return correct post', () => {
       cy.fixture('posts').then((postData) => {
-        post(ENDPOINTS.POSTS, {
-          title: postData[0].title,
-          content: postData[0].content,
+        cy.request({
+          method: 'POST',
+          url: '/posts',
+          headers: {
+            authorization: `Bearer ${Cypress.env('token')}`,
+          },
+          body: {
+            title: postData[0].title,
+            content: postData[0].content,
+          },
         }).then((response) => {
           const {
             success,
@@ -84,7 +69,7 @@ describe('Post module', () => {
      */
 
     it('should return unauthorized', () => {
-      cy.checkUnauthorized('GET', ENDPOINTS.POSTS)
+      cy.checkUnauthorized('GET', '/posts')
     })
 
     it('should return correct count and data', () => {
@@ -92,9 +77,15 @@ describe('Post module', () => {
         cy.createPosts(postData)
 
         // get all posts
-        get(ENDPOINTS.POSTS).then((response) => {
+        cy.request({
+          method: 'GET',
+          url: '/posts',
+          headers: {
+            authorization: `Bearer ${Cypress.env('token')}`,
+          },
+        }).then((response) => {
           expect(response.status).to.eq(200)
-          expect(response.body.success).to.be.true
+          expect(response.body.success).to.true
           expect(response.body.data.length).to.eq(postData.length)
 
           postData.forEach((_post, index) => {
@@ -114,13 +105,17 @@ describe('Post module', () => {
      * 3. return not found
      */
     it('should return unauthorized', () => {
-      cy.checkUnauthorized('GET', `/posts/900`)
+      cy.checkUnauthorized('GET', '/posts/900')
     })
 
     it('should return correct data', () => {
       cy.fixture('posts').then((postsData) => {
         postsData.forEach((_post, index) => {
-          get(`/posts/${index + 1}`).then((response) => {
+          cy.request({
+            method: 'GET',
+            url: `/posts/${index + 1}`,
+            headers: { authorization: `Bearer ${Cypress.env('token')}` },
+          }).then((response) => {
             const { title, content } = response.body.data
             expect(response.status).to.be.ok
             expect(title).to.eq(_post.title)
@@ -131,7 +126,12 @@ describe('Post module', () => {
     })
 
     it('should return not found', () => {
-      get(`/posts/${randomId}`, false).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: `/posts/${randomId}`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+        failOnStatusCode: false,
+      }).then((response) => {
         expect(response.status).to.eq(404)
         expect(response.body.success).to.be.false
         expect(response.body.data).to.be.null
@@ -152,7 +152,12 @@ describe('Post module', () => {
     })
 
     it('should return not found', () => {
-      patch(`/posts/${randomId}`, undefined, false).then((response) => {
+      cy.request({
+        method: 'PATCH',
+        url: `/posts/${randomId}`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+        failOnStatusCode: false,
+      }).then((response) => {
         expect(response.status).to.eq(404)
         expect(response.body.success).to.be.false
         expect(response.body.data).to.be.null
@@ -160,14 +165,16 @@ describe('Post module', () => {
     })
 
     it('should return error validation messages', () => {
-      patch(
-        `/posts/1`,
-        {
+      cy.request({
+        method: 'PATCH',
+        url: `/posts/1`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+        failOnStatusCode: false,
+        body: {
           title: false,
           content: randomId,
         },
-        false,
-      ).then((response) => {
+      }).then((response) => {
         cy.badRequest(response, [
           'title must be a string',
           'content must be a string',
@@ -183,9 +190,14 @@ describe('Post module', () => {
       }
 
       // update post
-      patch(`/posts/${updatedPost.id}`, {
-        title: updatedPost.title,
-        content: updatedPost.content,
+      cy.request({
+        method: 'PATCH',
+        url: `/posts/${updatedPost.id}`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+        body: {
+          title: updatedPost.title,
+          content: updatedPost.content,
+        },
       }).then((response) => {
         const {
           success,
@@ -199,7 +211,11 @@ describe('Post module', () => {
       })
 
       // check get by id
-      get(`/posts/${updatedPost.id}`).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: `/posts/${updatedPost.id}`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+      }).then((response) => {
         const { title, content } = response.body.data
         expect(response.status).to.be.ok
         expect(title).to.eq(updatedPost.title)
@@ -207,9 +223,17 @@ describe('Post module', () => {
       })
 
       // check get all post
-      get(ENDPOINTS.POSTS).then((response) => {
-        const post = response.body.data.find((_post) => _post.id === updatedPost.id)
-        expect(post).to.be.ok
+      cy.request({
+        method: 'GET',
+        url: '/posts',
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
+      }).then((response) => {
+        const post = response.body.data.find(
+          (_post) => _post.id === updatedPost.id,
+        )
+
         expect(post.title).to.eq(updatedPost.title)
         expect(post.content).to.eq(updatedPost.content)
       })
@@ -229,7 +253,12 @@ describe('Post module', () => {
     })
 
     it('should return not found', () => {
-      del(`/posts/${randomId}`, false).then((response) => {
+      cy.request({
+        method: 'DELETE',
+        url: `/posts/${randomId}`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+        failOnStatusCode: false,
+      }).then((response) => {
         expect(response.status).to.eq(404)
         expect(response.body.success).to.be.false
         expect(response.body.data).to.be.null
@@ -237,22 +266,38 @@ describe('Post module', () => {
     })
 
     it('should successfully remove the post', () => {
-      del(`/posts/1`).then((response) => {
+      cy.request({
+        method: 'DELETE',
+        url: `/posts/1`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+      }).then((response) => {
         expect(response.status).to.be.ok
         expect(response.body.success).to.be.true
         expect(response.body.message).to.eq('Post deleted successfully')
       })
     })
 
-    it('should not be found the deleted post', () => {
+    it('should not be found the deletede post', () => {
       // check get by id
-      get(`/posts/1`, false).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: `/posts/1`,
+        headers: { authorization: `Bearer ${Cypress.env('token')}` },
+        failOnStatusCode: false,
+      }).then((response) => {
         expect(response.status).to.eq(404)
       })
 
       // check get all post
-      get(ENDPOINTS.POSTS).then((response) => {
+      cy.request({
+        method: 'GET',
+        url: '/posts',
+        headers: {
+          authorization: `Bearer ${Cypress.env('token')}`,
+        },
+      }).then((response) => {
         const post = response.body.data.find((_post) => _post.id === 1)
+
         expect(post).to.be.undefined
       })
     })
