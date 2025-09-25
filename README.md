@@ -31,6 +31,3 @@ Singkat: kumpulan pengujian Cypress untuk API blog.
 
 ## Kontribusi
 - Buat branch fitur, buka PR, sertakan deskripsi dan langkah reproduksi jika menambah tes baru.
-
-## Lisensi
-- Sesuaikan dengan lisensi proyek Anda.
